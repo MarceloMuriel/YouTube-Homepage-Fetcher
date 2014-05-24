@@ -44,6 +44,7 @@ class Feed:
         print(timestamp)
         # Process the feeds by country
         c_country = 0
+        if c_country % 10 == 0: print('{0} % countries processed.', c_country / len(self.countries) * 100)
         for country in self.countries:
             feeds = self.getFeedsByCountry({'gl':country, 'persist_gl':1})
             try:
@@ -61,9 +62,10 @@ class Feed:
             except sqlite3.Error as e:
                 print(e)
             c_country += 1
-            if c_country % 10 == 0: print('{0} % countries processed.', c_country / len(self.countries) * 100)
         c.close()
         conn.close()
+        print('{0} % countries processed.', c_country / len(self.countries) * 100)
+        # Update ratings of the retrieved videos.
         self.updateRating(vids, timestamp)
     
     def getVideoMeta(self, api_key = None, vid = None):
