@@ -4,3 +4,4 @@
 homepage-feeds.db
 *.log
 /.ipynb_checkpoints
+/*.db-journal
