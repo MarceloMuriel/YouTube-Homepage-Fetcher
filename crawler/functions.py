@@ -16,7 +16,7 @@ def readURL(addr, urlvars, headers):
     data = ""
     try: req = urlopen(Request("%s?%s" % (addr, urlencode(urlvars)), None, headers))
     except HTTPError as e: 
-        if e.code != '403':
+        if e.code != 403:
             print('HTTP Error: {0}. Request: {1}'.format(e.code, "%s?%s" % (addr, urlencode(urlvars))))
     except URLError as e: print('URL Error: {0}'.format(e.reason))
     else:
@@ -44,7 +44,7 @@ def readFeed(full_url, urlvars, headers):
     else:
         print('error reading', full_url, 'with', urlvars)
 
-def readVideoMeta(full_url, urlvars, headers, sleep = True):
+def readVideoMeta(full_url, urlvars, headers, sleep = False):
     data = readURL(full_url, urlvars, headers)
     if not data and sleep:
         time.sleep(random.randrange(1,2))

@@ -75,7 +75,7 @@ class Feed:
         if data: data_v3 = data['items'].pop()
         return data_v3
     
-    def getVideoMetaV2(self, vid = None, sleep = True):
+    def getVideoMetaV2(self, vid = None, sleep = False):
         data_v2 = readVideoMeta(self.yt2_api + '/' + vid, {'v': self.yt2_version, 'alt': self.yt2_alt, 'strict': self.yt2_strict}, self.headers, sleep)
         return data_v2
     
@@ -97,8 +97,7 @@ class Feed:
         c.close()
         conn.close()
         if v_failed:
-            print('FAILED to retrieve meta for {0} videos ({1})'.format(len(v_failed), len(v_failed) / len(vids) * 100))
-            print('trying again')
+            print('FAILED to retrieve meta for {0} videos ({1}), trying again..'.format(len(v_failed), len(v_failed) / len(vids) * 100))
             self.updateRating(v_failed, timestamp)
 
 if __name__ == '__main__':
