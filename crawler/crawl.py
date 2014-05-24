@@ -45,7 +45,6 @@ class Feed:
         # Process the feeds by country
         c_country = 0
         for country in self.countries:
-            if c_country % 5 == 0: print('{0:.1f} % countries processed ({1}).'.format(c_country / len(self.countries) * 100, self.countries[c_country - 5:c_country+1] if c_country > 0 else '..'))
             feeds = self.getFeedsByCountry({'gl':country, 'persist_gl':1})
             try:
                 for feed in feeds:
@@ -62,6 +61,7 @@ class Feed:
             except sqlite3.Error as e:
                 print(e)
             c_country += 1
+            if c_country % 5 == 0: print('{0:.1f} % countries processed ({1}).'.format(c_country / len(self.countries) * 100, self.countries[c_country - 5:c_country] if c_country > 0 else '..'))
         c.close()
         conn.close()
         print('{0} % countries processed.'.format(c_country / len(self.countries) * 100))
