@@ -85,7 +85,7 @@ class Feed:
         conn = sqlite3.connect(os.path.dirname(PATH) + '/homepage-feeds.db')
         c = conn.cursor()
         for v in vids:
-            data = self.getVideoMetaV2(v)
+            data = self.getVideoMetaV2(v, True)
             if data:
                 try:
                     c.execute("UPDATE video_meta SET rating='{0}', ratings='{1}' WHERE timestamp='{2}' AND vid='{3}'".format(data['rating'] if 'rating' in data else 0, data['ratingCount'] if 'ratingCount' in data else 0, timestamp, v))
@@ -97,7 +97,7 @@ class Feed:
         c.close()
         conn.close()
         if v_failed:
-            print('FAILED to retrieve meta for {0} videos ({1}), trying again..'.format(len(v_failed), len(v_failed) / len(vids) * 100))
+            print('FAILED to retrieve meta for {0} videos ({1:.2f}%), trying again..'.format(len(v_failed), len(v_failed) / len(vids) * 100))
             self.updateRating(v_failed, timestamp)
 
 if __name__ == '__main__':
