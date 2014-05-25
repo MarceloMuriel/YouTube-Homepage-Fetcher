@@ -70,6 +70,7 @@ class Feed:
         print('{0} % countries processed.'.format(c_country / len(self.countries) * 100))
         # Update ratings of the retrieved videos.
         self.updateRating(vids, timestamp)
+        print('Ratings update process finished')
     
     def getVideoMeta(self, api_key = None, vid = None):
         fields = 'items(id,statistics)'
@@ -82,7 +83,10 @@ class Feed:
         data_v2 = readVideoMeta(self.yt2_api + '/' + vid, {'v': self.yt2_version, 'alt': self.yt2_alt, 'strict': self.yt2_strict}, self.headers, sleep)
         return data_v2
     
-    def updateRating(self, vids, timestamp):
+    def updateRating(self, vids, timestamp, rec_level = 0):
+        if rec_level >= 10:
+            print('MAX recursion level reached. Permanently FAILED to retrieve ratings for videos {0} with timestamp {1}'.format(vids, timestamp))
+            return
         print('Updating the rating of {0} videos'.format(len(vids)))
         v_failed = []
         conn = sqlite3.connect(os.path.dirname(PATH) + '/homepage-feeds.db')
@@ -102,7 +106,7 @@ class Feed:
         conn.close()
         if v_failed:
             print('FAILED to retrieve meta for {0} videos ({1:.2f}%), trying again..'.format(len(v_failed), len(v_failed) / len(vids) * 100))
-            self.updateRating(v_failed, timestamp)
+            self.updateRating(v_failed, timestamp, rec_level + 1)
 
 if __name__ == '__main__':
     #print(Feed().getFeedsByCountry())
