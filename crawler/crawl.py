@@ -4,12 +4,11 @@ Created on Mar 18, 2014
 @author: hmuriel
 '''
 from crawler import PATH
-from crawler.functions import readFeed, readURL, readVideoMeta
+from crawler.functions import readFeed, readVideoMeta
 from datetime import datetime
 import sqlite3
 import os
 import sys
-import json
 
 class Feed:
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.2; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1667.0 Safari/537.36'}
@@ -26,6 +25,9 @@ class Feed:
     # $x('//div[@class="yt-picker-section"]//a[@class="yt-picker-item"]/@href').forEach(function(e){a.push(e.value.substring(27, 29));})
     countries = ["US", "DZ", "AR", "AU", "AT", "BH", "BE", "BA", "BG", "CA", "CL", "CO", "HR", "CZ", "DK", "EG", "EE", "FI", "FR", "DE", "GH", "GR", "HK", "HU", "IN", "ID", "IE", "IL", "IT", "JP", "JO", "KE", "KW", "LV", "LT", "MK", "MY", "MX", "ME", "MA", "NL", "NZ", "NG", "NO", "OM", "PE", "PH", "PL", "PT", "QA", "RO", "RU", "SA", "SN", "RS", "SG", "SK", "SI", "ZA", "KR", "ES", "SE", "CH", "TW", "TN", "TR", "UG", "UA", "AE", "GB", "YE"]
     
+    # Initial script execution datetime, for stats.
+    stime = datetime.now()
+    
     def getFeedsByCountry(self, urlvars={'gl':'CH', 'persist_gl':1}):
         feeds = []
         for feed in readFeed(self.base_url, urlvars, self.headers):
@@ -39,7 +41,8 @@ class Feed:
         vids = []
         # for simplicity use the same timestamp.
         timestamp = datetime.now().isoformat()
-        print(timestamp)
+        ctime = datetime.now()
+        print('timestamp:', timestamp)
         # Process the feeds by country
         conn = sqlite3.connect(os.path.dirname(PATH) + '/homepage-feeds.db')
         c_country = 0
@@ -65,12 +68,13 @@ class Feed:
                 c.close()
                 print('DB Error, processing countries.', e)
             c_country += 1
-            if c_country % 5 == 0: print('{0:.1f} % countries processed ({1}).'.format(c_country / len(self.countries) * 100, self.countries[c_country - 5:c_country] if c_country > 0 else '..'))
+            if c_country % 5 == 0: 
+                print('{0:.1f} % countries processed ({1}), {2}s elapsed, {3} total time.'.format(c_country / len(self.countries) * 100, self.countries[c_country - 5:c_country] if c_country > 0 else '..', round((datetime.now() - ctime).total_seconds()), datetime.now() - self.stime))
+                ctime = datetime.now()
         conn.close()
-        print('{0} % countries processed.'.format(c_country / len(self.countries) * 100))
+        print('{0} % countries processed, {1} total time.'.format(c_country / len(self.countries) * 100, datetime.now() - self.stime))
         # Update ratings of the retrieved videos.
         self.updateRating(vids, timestamp)
-        print('Ratings update process finished')
     
     def getVideoMeta(self, api_key = None, vid = None):
         fields = 'items(id,statistics)'
@@ -83,14 +87,15 @@ class Feed:
         data_v2 = readVideoMeta(self.yt2_api + '/' + vid, {'v': self.yt2_version, 'alt': self.yt2_alt, 'strict': self.yt2_strict}, self.headers, sleep)
         return data_v2
     
-    def updateRating(self, vids, timestamp, rec_level = 0):
-        if rec_level >= 10:
+    def updateRating(self, vids, timestamp, recur_level = 0):
+        if recur_level >= 10:
             print('MAX recursion level reached. Permanently FAILED to retrieve ratings for videos {0} with timestamp {1}'.format(vids, timestamp))
             return
+        ctime = datetime.now()
         print('Updating the rating of {0} videos'.format(len(vids)))
         v_failed = []
         conn = sqlite3.connect(os.path.dirname(PATH) + '/homepage-feeds.db')
-        for v in vids:
+        for idx, v in enumerate(vids):
             data = self.getVideoMetaV2(v, True)
             if data:
                 try:
@@ -103,10 +108,16 @@ class Feed:
                     print('DB Error, updating ratings.', e)
             else:
                 v_failed.append(v)
+            if (idx + 1) % (int(len(vids) / 10)) == 0:
+                print('{0}/{1} video meta explored ({2:.2f}%), {3}s elapsed, {4} total time.'.format(idx + 1, len(vids), (idx + 1) / len(vids) * 100, round((datetime.now() - ctime).total_seconds()), datetime.now() - self.stime))
         conn.close()
+        print('{0} video meta retrieved, {1} total time'.format(len(vids) - len(v_failed), datetime.now() - self.stime))
         if v_failed:
             print('FAILED to retrieve meta for {0} videos ({1:.2f}%), trying again..'.format(len(v_failed), len(v_failed) / len(vids) * 100))
-            self.updateRating(v_failed, timestamp, rec_level + 1)
+            return self.updateRating(v_failed, timestamp, recur_level + 1)
+        else: 
+            print('No more videos for ratings retrieval, {0} total time'.format(datetime.now() - self.stime))
+        return
 
 if __name__ == '__main__':
     #print(Feed().getFeedsByCountry())
