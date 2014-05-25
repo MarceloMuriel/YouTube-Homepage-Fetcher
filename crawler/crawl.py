@@ -37,19 +37,18 @@ class Feed:
             print('no API key provided..')
             return
         vids = []
-        conn = sqlite3.connect(os.path.dirname(PATH) + '/homepage-feeds.db')
-        c = conn.cursor()
         # for simplicity use the same timestamp.
         timestamp = datetime.now().isoformat()
         print(timestamp)
         # Process the feeds by country
+        conn = sqlite3.connect(os.path.dirname(PATH) + '/homepage-feeds.db')
         c_country = 0
         for country in self.countries:
             feeds = self.getFeedsByCountry({'gl':country, 'persist_gl':1})
             try:
                 for feed in feeds:
                     for v in feed['videos']:
-                        c.execute("INSERT INTO feed VALUES (?, ?, ?, ?)", (country, feed['href'], timestamp, v))
+                        c = conn.cursor()
                         if not c.execute("SELECT vid FROM video_meta WHERE vid='{0}' AND timestamp='{1}'".format(v, timestamp)).fetchone():
                             v_meta = self.getVideoMeta(api_key, v)
                             if v_meta:
@@ -57,12 +56,16 @@ class Feed:
                                 # Default the rating to 0 and update later on.
                                 c.execute("INSERT INTO video_meta VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (timestamp, v_meta['id'], stats['viewCount'], stats['likeCount'], stats['dislikeCount'], stats['favoriteCount'], stats['commentCount'], 0, 0))
                                 vids.append(v)
+                            else:
+                                print('failed to retrieve meta for video {0}'.format(v))
+                        c.execute("INSERT INTO feed VALUES (?, ?, ?, ?)", (country, feed['href'], timestamp, v))
                         conn.commit()
+                        c.close()
             except sqlite3.Error as e:
-                print(e)
+                c.close()
+                print('DB Error, processing countries.', e)
             c_country += 1
             if c_country % 5 == 0: print('{0:.1f} % countries processed ({1}).'.format(c_country / len(self.countries) * 100, self.countries[c_country - 5:c_country] if c_country > 0 else '..'))
-        c.close()
         conn.close()
         print('{0} % countries processed.'.format(c_country / len(self.countries) * 100))
         # Update ratings of the retrieved videos.
@@ -71,7 +74,7 @@ class Feed:
     def getVideoMeta(self, api_key = None, vid = None):
         fields = 'items(id,statistics)'
         data_v3 = None
-        data = readVideoMeta(self.yt3_api, {'id': vid, 'key': api_key, 'part': 'statistics', 'fields': fields}, self.headers)
+        data = readVideoMeta(self.yt3_api, {'id': vid, 'key': api_key, 'part': 'statistics', 'fields': fields}, self.headers, True)
         if data: data_v3 = data['items'].pop()
         return data_v3
     
@@ -83,18 +86,19 @@ class Feed:
         print('Updating the rating of {0} videos'.format(len(vids)))
         v_failed = []
         conn = sqlite3.connect(os.path.dirname(PATH) + '/homepage-feeds.db')
-        c = conn.cursor()
         for v in vids:
             data = self.getVideoMetaV2(v, True)
             if data:
                 try:
+                    c = conn.cursor()
                     c.execute("UPDATE video_meta SET rating='{0}', ratings='{1}' WHERE timestamp='{2}' AND vid='{3}'".format(data['rating'] if 'rating' in data else 0, data['ratingCount'] if 'ratingCount' in data else 0, timestamp, v))
                     conn.commit()
+                    c.close()
                 except sqlite3.Error as e:
-                    print(e)
+                    c.close()
+                    print('DB Error, updating ratings.', e)
             else:
                 v_failed.append(v)
-        c.close()
         conn.close()
         if v_failed:
             print('FAILED to retrieve meta for {0} videos ({1:.2f}%), trying again..'.format(len(v_failed), len(v_failed) / len(vids) * 100))

@@ -47,8 +47,11 @@ def readFeed(full_url, urlvars, headers):
 def readVideoMeta(full_url, urlvars, headers, sleep = False):
     data = readURL(full_url, urlvars, headers)
     if not data and sleep:
-        time.sleep(random.randrange(1,2))
+        time.sleep(1)
         data = readURL(full_url, urlvars, headers)
+        # In most cases the readVideoMeta will be called multiple times, this allows to 
+        # have an interval of at least 1 second between calls (in case of failure)
+        time.sleep(1)
     if not data:
         return None
     return json.loads(data)
