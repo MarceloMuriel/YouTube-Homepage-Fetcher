@@ -10,7 +10,6 @@ from urllib.request import urlopen, Request
 import lxml.html
 import json
 import time
-import random
 
 def readURL(addr, urlvars, headers):
     data = ""
@@ -18,7 +17,8 @@ def readURL(addr, urlvars, headers):
     except HTTPError as e: 
         if e.code != 403:
             print('HTTP Error: {0}. Request: {1}'.format(e.code, "%s?%s" % (addr, urlencode(urlvars))))
-    except URLError as e: print('URL Error: {0}'.format(e.reason))
+    except URLError as e: 
+        print('URL Error: {0}'.format(e))
     else:
         data = req.read().decode(req.headers.get_content_charset())
     return data
@@ -42,7 +42,7 @@ def readFeed(full_url, urlvars, headers):
             feed.update({'videos':videos})
             yield feed
     else:
-        print('error reading', full_url, 'with', urlvars)
+        print('error reading feed', full_url, 'with', urlvars)
 
 def readVideoMeta(full_url, urlvars, headers, sleep = False):
     data = readURL(full_url, urlvars, headers)

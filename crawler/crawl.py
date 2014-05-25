@@ -47,11 +47,10 @@ class Feed:
         conn = sqlite3.connect(os.path.dirname(PATH) + '/homepage-feeds.db')
         c_country = 0
         for country in self.countries:
-            feeds = self.getFeedsByCountry({'gl':country, 'persist_gl':1})
-            try:
-                for feed in feeds:
-                    for v in feed['videos']:
-                        c = conn.cursor()
+            for feed in self.getFeedsByCountry({'gl':country, 'persist_gl':1}):
+                for v in feed['videos']:
+                    c = conn.cursor()
+                    try:
                         if not c.execute("SELECT vid FROM video_meta WHERE vid='{0}' AND timestamp='{1}'".format(v, timestamp)).fetchone():
                             v_meta = self.getVideoMeta(api_key, v)
                             if v_meta:
@@ -63,10 +62,9 @@ class Feed:
                                 print('failed to retrieve meta for video {0}'.format(v))
                         c.execute("INSERT INTO feed VALUES (?, ?, ?, ?)", (country, feed['href'], timestamp, v))
                         conn.commit()
-                        c.close()
-            except sqlite3.Error as e:
-                c.close()
-                print('DB Error, processing countries.', e)
+                    except sqlite3.Error as e:
+                        print('DB Error, processing countries.', e)
+                    c.close()
             c_country += 1
             if c_country % 5 == 0: 
                 print('{0:.1f} % countries processed ({1}), {2}s elapsed, {3} total time.'.format(c_country / len(self.countries) * 100, self.countries[c_country - 5:c_country] if c_country > 0 else '..', round((datetime.now() - ctime).total_seconds()), datetime.now() - self.stime))
