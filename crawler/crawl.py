@@ -108,7 +108,7 @@ class Feed:
                     print('DB Error, updating ratings.', e)
             else:
                 v_failed.append(v)
-            if (idx + 1) % (int(len(vids) / 10)) == 0:
+            if (idx + 1) % ((int(len(vids) / 10)) or 1) == 0:
                 print('{0}/{1} video meta explored ({2:.2f}%), {3}s elapsed, {4} total time.'.format(idx + 1, len(vids), (idx + 1) / len(vids) * 100, round((datetime.now() - ctime).total_seconds()), datetime.now() - self.stime))
         conn.close()
         print('{0} video meta retrieved, {1} total time'.format(len(vids) - len(v_failed), datetime.now() - self.stime))
