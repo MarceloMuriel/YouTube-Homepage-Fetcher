@@ -10,6 +10,7 @@ from urllib.request import urlopen, Request
 import lxml.html
 import json
 import time
+import random
 
 def readURL(addr, urlvars, headers):
     data = ""
@@ -23,10 +24,14 @@ def readURL(addr, urlvars, headers):
         data = req.read().decode(req.headers.get_content_charset())
     return data
 
-def readFeed(full_url, urlvars, headers):
+def readFeed(full_url, urlvars, headers, sleep = True):
     ''' Lazy generator to read the feeds '''
     # Try to read the URL twice naively in case the server answers with a (non persistent) HTTP error.
     data = readURL(full_url, urlvars, headers) or readURL(full_url, urlvars, headers)
+    if not data and sleep:
+        # Wait between 1 to 3 seconds before issuing a new call.
+        time.sleep(random.randrange(1, 3))
+        data = readURL(full_url, urlvars, headers)
     if data:
         doc = lxml.html.fromstring(data)
         feed_nodes = doc.xpath('//ul/li[contains(@class, "feed")]');
