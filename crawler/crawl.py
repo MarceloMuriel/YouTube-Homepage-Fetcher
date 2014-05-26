@@ -46,7 +46,10 @@ class Feed:
         # Process the feeds by country
         conn = sqlite3.connect(os.path.dirname(PATH) + '/homepage-feeds.db')
         c_country = 0
-        for country in self.countries:
+        for c_country, country in enumerate(self.countries):
+            if c_country % ((int(len(self.countries) / 5)) or 1) == 0:
+                print('{0:.1f} % countries processed ({1}), {2}s elapsed, {3} total time.'.format((c_country + 1)/ len(self.countries) * 100 if c_country else 0, self.countries[c_country - int(len(self.countries) / 5):c_country] if c_country else '...', round((datetime.now() - ctime).total_seconds()), datetime.now() - self.stime))
+                ctime = datetime.now()
             for feed in self.getFeedsByCountry({'gl':country, 'persist_gl':1}):
                 for v in feed['videos']:
                     c = conn.cursor()
@@ -54,23 +57,24 @@ class Feed:
                         if not c.execute("SELECT vid FROM video_meta WHERE vid='{0}' AND timestamp='{1}'".format(v, timestamp)).fetchone():
                             v_meta = self.getVideoMeta(api_key, v)
                             if v_meta:
+                                # Insert feed record
+                                c.execute("INSERT INTO feed VALUES (?, ?, ?, ?)", (country, feed['href'], timestamp, v))
                                 stats = v_meta['statistics']
                                 # Default the rating to 0 and update later on.
                                 c.execute("INSERT INTO video_meta VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (timestamp, v_meta['id'], stats['viewCount'], stats['likeCount'], stats['dislikeCount'], stats['favoriteCount'], stats['commentCount'], 0, 0))
                                 vids.append(v)
                             else:
-                                print('failed to retrieve meta for video {0}'.format(v))
-                        c.execute("INSERT INTO feed VALUES (?, ?, ?, ?)", (country, feed['href'], timestamp, v))
+                                # Do not record anything in the DB
+                                print('FAILED to retrieve meta for video {0}'.format(v))
+                        else:
+                            # Record only the feed. Video previously inserted with the current timestamp.
+                            c.execute("INSERT INTO feed VALUES (?, ?, ?, ?)", (country, feed['href'], timestamp, v))
                         conn.commit()
                     except sqlite3.Error as e:
                         print('DB Error, processing countries.', e)
                     c.close()
-            c_country += 1
-            if c_country % 5 == 0: 
-                print('{0:.1f} % countries processed ({1}), {2}s elapsed, {3} total time.'.format(c_country / len(self.countries) * 100, self.countries[c_country - 5:c_country] if c_country > 0 else '..', round((datetime.now() - ctime).total_seconds()), datetime.now() - self.stime))
-                ctime = datetime.now()
         conn.close()
-        print('{0} % countries processed, {1} total time.'.format(c_country / len(self.countries) * 100, datetime.now() - self.stime))
+        print('{0} % countries processed, {1} total time.'.format((c_country + 1) / len(self.countries) * 100, datetime.now() - self.stime))
         # Update ratings of the retrieved videos.
         self.updateRating(vids, timestamp)
     
@@ -78,7 +82,7 @@ class Feed:
         fields = 'items(id,statistics)'
         data_v3 = None
         data = readVideoMeta(self.yt3_api, {'id': vid, 'key': api_key, 'part': 'statistics', 'fields': fields}, self.headers, True)
-        if data: data_v3 = data['items'].pop()
+        if data and data['items']: data_v3 = data['items'].pop()
         return data_v3
     
     def getVideoMetaV2(self, vid = None, sleep = False):
