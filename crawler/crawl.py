@@ -46,7 +46,7 @@ class Feed:
         # Process the feeds by country
         conn = sqlite3.connect(os.path.dirname(PATH) + '/homepage-feeds.db')
         c_country = 0
-        for c_country, country in enumerate(self.countries[:1]):
+        for c_country, country in enumerate(self.countries):
             if c_country % ((int(len(self.countries) / 5)) or 1) == 0:
                 print('{0:.1f} % countries processed ({1}), {2}s elapsed, {3} total time.'.format((c_country + 1)/ len(self.countries) * 100 if c_country else 0, self.countries[c_country - int(len(self.countries) / 5):c_country] if c_country else '...', round((datetime.now() - ctime).total_seconds()), datetime.now() - self.stime))
                 ctime = datetime.now()
